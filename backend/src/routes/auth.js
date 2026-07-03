@@ -7,18 +7,24 @@ const { authenticate } = require("../middleware/auth");
 const router = express.Router();
 const prisma = new PrismaClient();
 
-// Register (customer only via self-registration)
+// Register (customer self-registration only — agents created by admin, admins via seed)
 router.post("/register", async (req, res, next) => {
   try {
     const { name, email, phone, password } = req.body;
     if (!name || !email || !password) return res.status(400).json({ error: "name, email, password required" });
+
+    // Prevent length-based attacks
+    if (name.length > 100)     return res.status(400).json({ error: "Name too long" });
+    if (email.length > 255)    return res.status(400).json({ error: "Email too long" });
+    if (password.length < 6)   return res.status(400).json({ error: "Password must be at least 6 characters" });
+    if (password.length > 128) return res.status(400).json({ error: "Password too long" });
 
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) return res.status(409).json({ error: "Email already registered" });
 
     const hashed = await bcrypt.hash(password, 12);
     const user = await prisma.user.create({
-      data: { name, email, phone, password: hashed, role: "CUSTOMER" },
+      data: { name, email, phone: phone || null, password: hashed, role: "CUSTOMER" },
       select: { id: true, name: true, email: true, phone: true, role: true },
     });
     res.status(201).json({ user });
