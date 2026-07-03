@@ -24,6 +24,9 @@ import AdminOrderDetail from "./pages/admin/OrderDetail";
 import AgentDashboard from "./pages/agent/Dashboard";
 import AgentOrderDetail from "./pages/agent/OrderDetail";
 
+// Shared
+import ProfilePage from "./pages/ProfilePage";
+
 function PrivateRoute({ children, roles }) {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
@@ -55,6 +58,7 @@ export default function App() {
             <Route index element={<CustomerDashboard />} />
             <Route path="place-order" element={<PlaceOrder />} />
             <Route path="orders/:id" element={<OrderDetail />} />
+            <Route path="profile" element={<ProfilePage />} />
           </Route>
 
           {/* Admin routes */}
@@ -65,12 +69,14 @@ export default function App() {
             <Route path="zones" element={<AdminZones />} />
             <Route path="rate-cards" element={<AdminRateCards />} />
             <Route path="agents" element={<AdminAgents />} />
+            <Route path="profile" element={<ProfilePage />} />
           </Route>
 
           {/* Agent routes */}
           <Route path="/agent" element={<PrivateRoute roles={["AGENT"]}><Layout /></PrivateRoute>}>
             <Route index element={<AgentDashboard />} />
             <Route path="orders/:id" element={<AgentOrderDetail />} />
+            <Route path="profile" element={<ProfilePage />} />
           </Route>
         </Routes>
       </BrowserRouter>

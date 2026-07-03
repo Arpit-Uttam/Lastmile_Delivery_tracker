@@ -63,4 +63,47 @@ router.get("/me", authenticate, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// Update current user profile (name, phone, password)
+router.patch("/me", authenticate, async (req, res, next) => {
+  try {
+    const { name, phone, currentPassword, newPassword } = req.body;
+    const data = {};
+
+    if (name !== undefined) {
+      if (!name.trim())          return res.status(400).json({ error: "Name cannot be empty" });
+      if (name.length > 100)     return res.status(400).json({ error: "Name too long" });
+      data.name = name.trim();
+    }
+
+    if (phone !== undefined) {
+      data.phone = phone ? phone.trim() : null;
+    }
+
+    // Password change — requires current password verification
+    if (newPassword !== undefined) {
+      if (!currentPassword) return res.status(400).json({ error: "currentPassword is required to set a new password" });
+      if (newPassword.length < 6)   return res.status(400).json({ error: "New password must be at least 6 characters" });
+      if (newPassword.length > 128) return res.status(400).json({ error: "New password too long" });
+
+      const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+      const valid = await bcrypt.compare(currentPassword, user.password);
+      if (!valid) return res.status(400).json({ error: "Current password is incorrect" });
+
+      data.password = await bcrypt.hash(newPassword, 12);
+    }
+
+    if (Object.keys(data).length === 0) {
+      return res.status(400).json({ error: "Nothing to update" });
+    }
+
+    const updated = await prisma.user.update({
+      where: { id: req.user.id },
+      data,
+      select: { id: true, name: true, email: true, phone: true, role: true, createdAt: true },
+    });
+
+    res.json({ user: updated, message: "Profile updated successfully" });
+  } catch (err) { next(err); }
+});
+
 module.exports = router;

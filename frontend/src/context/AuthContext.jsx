@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState } from "react";
 import api from "../services/api";
 
 const AuthContext = createContext(null);
@@ -8,7 +8,6 @@ export function AuthProvider({ children }) {
     const stored = localStorage.getItem("user");
     return stored ? JSON.parse(stored) : null;
   });
-  const [loading, setLoading] = useState(false);
 
   async function login(email, password) {
     const { data } = await api.post("/auth/login", { email, password });
@@ -29,8 +28,15 @@ export function AuthProvider({ children }) {
     setUser(null);
   }
 
+  // Sync updated profile data into state + localStorage
+  function updateUser(updated) {
+    const merged = { ...user, ...updated };
+    localStorage.setItem("user", JSON.stringify(merged));
+    setUser(merged);
+  }
+
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, loading }}>
+    <AuthContext.Provider value={{ user, login, register, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

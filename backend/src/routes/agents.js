@@ -6,6 +6,24 @@ const { authenticate, authorize } = require("../middleware/auth");
 const router = express.Router();
 const prisma = new PrismaClient();
 
+// Get the calling agent's own profile (agent only)
+router.get("/me", authenticate, authorize("AGENT"), async (req, res, next) => {
+  try {
+    const agent = await prisma.agent.findUnique({
+      where: { userId: req.user.id },
+      include: {
+        user: { select: { id: true, name: true, email: true, phone: true, createdAt: true } },
+        agentZones: { include: { zone: true } },
+        orders: {
+          select: { id: true, status: true },
+        },
+      },
+    });
+    if (!agent) return res.status(404).json({ error: "Agent record not found" });
+    res.json(agent);
+  } catch (err) { next(err); }
+});
+
 // List all agents (admin)
 router.get("/", authenticate, authorize("ADMIN"), async (req, res, next) => {
   try {

@@ -6,6 +6,7 @@ const NAV_LINKS = {
   CUSTOMER: [
     { to: "/customer", label: "Dashboard", exact: true },
     { to: "/customer/place-order", label: "New Order" },
+    { to: "/customer/profile", label: "Profile" },
   ],
   ADMIN: [
     { to: "/admin", label: "Dashboard", exact: true },
@@ -13,9 +14,11 @@ const NAV_LINKS = {
     { to: "/admin/zones", label: "Zones" },
     { to: "/admin/rate-cards", label: "Rate Cards" },
     { to: "/admin/agents", label: "Agents" },
+    { to: "/admin/profile", label: "Profile" },
   ],
   AGENT: [
     { to: "/agent", label: "My Deliveries", exact: true },
+    { to: "/agent/profile", label: "Profile" },
   ],
 };
 
@@ -79,9 +82,13 @@ export default function Layout() {
             {/* Right side */}
             <div className="flex items-center gap-3">
               <div className="hidden sm:flex items-center gap-2">
-                <div className="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-semibold">
+                <Link
+                  to={`/${user?.role?.toLowerCase()}/profile`}
+                  className="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-semibold hover:ring-2 hover:ring-blue-300 transition"
+                  title="View profile"
+                >
                   {user?.name?.[0]?.toUpperCase()}
-                </div>
+                </Link>
                 <div className="hidden lg:block text-right">
                   <p className="text-xs font-semibold text-gray-900 leading-none">{user?.name}</p>
                   <span className={`text-xs font-medium px-1.5 py-0.5 rounded-md mt-0.5 inline-block ${ROLE_COLORS[user?.role]}`}>
