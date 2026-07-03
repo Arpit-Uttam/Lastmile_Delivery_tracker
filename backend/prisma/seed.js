@@ -4,14 +4,20 @@ const bcrypt = require("bcryptjs");
 const prisma = new PrismaClient();
 
 async function main() {
-  // Create admin
-  const adminPassword = await bcrypt.hash("admin123", 10);
+  // Admin credentials — set ADMIN_EMAIL and ADMIN_PASSWORD in .env before seeding in production
+  const adminEmail = process.env.ADMIN_EMAIL || "admin@delivery.com";
+  const adminPasswordPlain = process.env.ADMIN_PASSWORD;
+  if (!adminPasswordPlain) {
+    throw new Error("ADMIN_PASSWORD env var is required. Set it in .env before seeding.");
+  }
+
+  const adminPassword = await bcrypt.hash(adminPasswordPlain, 12);
   const admin = await prisma.user.upsert({
-    where: { email: "admin@delivery.com" },
+    where: { email: adminEmail },
     update: {},
     create: {
       name: "Super Admin",
-      email: "admin@delivery.com",
+      email: adminEmail,
       phone: "9999999999",
       password: adminPassword,
       role: "ADMIN",
@@ -70,56 +76,60 @@ async function main() {
     }
   }
 
-  // Create a customer
-  const customerPassword = await bcrypt.hash("customer123", 10);
-  await prisma.user.upsert({
-    where: { email: "customer@example.com" },
-    update: {},
-    create: {
-      name: "John Customer",
-      email: "customer@example.com",
-      phone: "8888888888",
-      password: customerPassword,
-      role: "CUSTOMER",
-    },
-  });
+  // Create a customer (demo — remove in production or set via env)
+  const customerEmail = process.env.DEMO_CUSTOMER_EMAIL;
+  if (customerEmail) {
+    const customerPassword = await bcrypt.hash(process.env.DEMO_CUSTOMER_PASSWORD || "changeme123", 12);
+    await prisma.user.upsert({
+      where: { email: customerEmail },
+      update: {},
+      create: {
+        name: "Demo Customer",
+        email: customerEmail,
+        phone: "8888888888",
+        password: customerPassword,
+        role: "CUSTOMER",
+      },
+    });
+  }
 
-  // Create a delivery agent user + agent record
-  const agentPassword = await bcrypt.hash("agent123", 10);
-  const agentUser = await prisma.user.upsert({
-    where: { email: "agent1@delivery.com" },
-    update: {},
-    create: {
-      name: "Agent One",
-      email: "agent1@delivery.com",
-      phone: "7777777777",
-      password: agentPassword,
-      role: "AGENT",
-    },
-  });
+  // Create a delivery agent user + agent record (demo — remove in production or set via env)
+  const agentEmail = process.env.DEMO_AGENT_EMAIL;
+  if (agentEmail) {
+    const agentPassword = await bcrypt.hash(process.env.DEMO_AGENT_PASSWORD || "changeme123", 12);
+    const agentUser = await prisma.user.upsert({
+      where: { email: agentEmail },
+      update: {},
+      create: {
+        name: "Agent One",
+        email: agentEmail,
+        phone: "7777777777",
+        password: agentPassword,
+        role: "AGENT",
+      },
+    });
 
-  const agent = await prisma.agent.upsert({
-    where: { userId: agentUser.id },
-    update: {},
-    create: {
-      userId: agentUser.id,
-      status: "AVAILABLE",
-      latitude: 28.6139,
-      longitude: 77.209,
-    },
-  });
+    const agent = await prisma.agent.upsert({
+      where: { userId: agentUser.id },
+      update: {},
+      create: {
+        userId: agentUser.id,
+        status: "AVAILABLE",
+        latitude: 28.6139,
+        longitude: 77.209,
+      },
+    });
 
-  // Assign agent to Zone A
-  await prisma.agentZone.upsert({
-    where: { agentId_zoneId: { agentId: agent.id, zoneId: zoneA.id } },
-    update: {},
-    create: { agentId: agent.id, zoneId: zoneA.id },
-  });
+    // Assign agent to Zone A
+    await prisma.agentZone.upsert({
+      where: { agentId_zoneId: { agentId: agent.id, zoneId: zoneA.id } },
+      update: {},
+      create: { agentId: agent.id, zoneId: zoneA.id },
+    });
+  }
 
   console.log("Seed completed.");
-  console.log("Admin: admin@delivery.com / admin123");
-  console.log("Customer: customer@example.com / customer123");
-  console.log("Agent: agent1@delivery.com / agent123");
+  console.log(`Admin created: ${adminEmail}`);
 }
 
 main()

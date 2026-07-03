@@ -12,7 +12,23 @@ const trackingRoutes = require("./routes/tracking");
 
 const app = express();
 
-app.use(cors({ origin: process.env.FRONTEND_URL || "*" }));
+const allowedOrigins = process.env.FRONTEND_URL
+  ? process.env.FRONTEND_URL.split(",").map((u) => u.trim())
+  : [];
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow server-to-server (no origin) or explicitly listed origins
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error(`CORS: origin ${origin} not allowed`));
+      }
+    },
+    credentials: true,
+  })
+);
 app.use(express.json());
 
 // Routes
@@ -28,8 +44,14 @@ app.get("/api/health", (req, res) => res.json({ status: "ok" }));
 
 // Global error handler
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(err.status || 500).json({ error: err.message || "Internal Server Error" });
+  if (process.env.NODE_ENV !== "production") {
+    console.error(err.stack);
+  } else {
+    console.error(err.message);
+  }
+  res.status(err.status || 500).json({
+    error: process.env.NODE_ENV === "production" ? "Internal Server Error" : err.message,
+  });
 });
 
 const PORT = process.env.PORT || 5000;
