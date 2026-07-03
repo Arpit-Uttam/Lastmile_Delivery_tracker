@@ -1,0 +1,174 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  CUSTOMER
+  AGENT
+}
+
+enum OrderType {
+  B2B
+  B2C
+}
+
+enum PaymentType {
+  PREPAID
+  COD
+}
+
+enum OrderStatus {
+  CREATED
+  CONFIRMED
+  ASSIGNED
+  PICKED_UP
+  IN_TRANSIT
+  OUT_FOR_DELIVERY
+  DELIVERED
+  FAILED
+  RESCHEDULED
+}
+
+enum AgentStatus {
+  AVAILABLE
+  BUSY
+  OFFLINE
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  phone     String?
+  password  String
+  role      Role     @default(CUSTOMER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders        Order[]  @relation("CustomerOrders")
+  createdOrders Order[]  @relation("CreatedByOrders")
+  agent         Agent?
+}
+
+model Zone {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+
+  areas          Area[]
+  pickupOrders   Order[] @relation("PickupZone")
+  dropOrders     Order[] @relation("DropZone")
+  agentZones     AgentZone[]
+}
+
+model Area {
+  id       String @id @default(cuid())
+  name     String
+  pincode  String @unique
+  zoneId   String
+  zone     Zone   @relation(fields: [zoneId], references: [id])
+}
+
+model RateCard {
+  id           String    @id @default(cuid())
+  name         String
+  orderType    OrderType
+  isIntraZone  Boolean
+  ratePerKg    Float
+  minimumCharge Float    @default(0)
+  codSurcharge  Float    @default(0) // percentage
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model Agent {
+  id          String      @id @default(cuid())
+  userId      String      @unique
+  user        User        @relation(fields: [userId], references: [id])
+  status      AgentStatus @default(AVAILABLE)
+  latitude    Float?
+  longitude   Float?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  orders     Order[]
+  agentZones AgentZone[]
+}
+
+model AgentZone {
+  id      String @id @default(cuid())
+  agentId String
+  zoneId  String
+  agent   Agent  @relation(fields: [agentId], references: [id])
+  zone    Zone   @relation(fields: [zoneId], references: [id])
+
+  @@unique([agentId, zoneId])
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  trackingNumber  String      @unique
+  customerId      String
+  customer        User        @relation("CustomerOrders", fields: [customerId], references: [id])
+  createdById     String
+  createdBy       User        @relation("CreatedByOrders", fields: [createdById], references: [id])
+
+  // Addresses
+  pickupAddress   String
+  pickupPincode   String
+  dropAddress     String
+  dropPincode     String
+  pickupZoneId    String?
+  dropZoneId      String?
+  pickupZone      Zone?  @relation("PickupZone", fields: [pickupZoneId], references: [id])
+  dropZone        Zone?  @relation("DropZone", fields: [dropZoneId], references: [id])
+
+  // Package
+  length          Float
+  breadth         Float
+  height          Float
+  actualWeight    Float
+  volumetricWeight Float
+  chargeableWeight Float
+
+  // Order details
+  orderType       OrderType
+  paymentType     PaymentType
+  status          OrderStatus @default(CREATED)
+
+  // Charges
+  ratePerKg       Float
+  baseCharge      Float
+  codSurcharge    Float       @default(0)
+  totalCharge     Float
+
+  // Agent
+  agentId         String?
+  agent           Agent?  @relation(fields: [agentId], references: [id])
+
+  // Reschedule
+  rescheduleDate  DateTime?
+  failureReason   String?
+
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  trackingHistory TrackingEvent[]
+}
+
+model TrackingEvent {
+  id        String      @id @default(cuid())
+  orderId   String
+  order     Order       @relation(fields: [orderId], references: [id])
+  status    OrderStatus
+  note      String?
+  actorId   String?
+  actorRole Role?
+  createdAt DateTime    @default(now())
+}
